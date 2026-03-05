@@ -1,0 +1,71 @@
+# ==========================================================
+# Konfigurasi Scalability & High Availability
+# ==========================================================
+# Kita jalankan 3 pod agar jika 1 node slave mati, 
+# pod di node lain tetap melayani user.
+replicaCount: 3
+
+# ==========================================================
+# Konfigurasi Docker Image
+# ==========================================================
+image:
+  # Gunakan IP Nexus (10.3.1.67:8802 untuk server atau localhost:8802 untuk lokal)
+  repository: company-repo/company-apps
+  pullPolicy: Always
+  tag: "latest"
+
+# Secret untuk autentikasi ke Nexus
+imagePullSecrets:
+  - name: nexus-docker-secret
+
+# ==========================================================
+# Penamaan & Identitas (Wajib ada untuk _helpers.tpl)
+# ==========================================================
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Kita set false dulu karena biasanya apps Java belum butuh izin khusus ke API K8s
+  create: false
+  name: ""
+
+# ==========================================================
+# Konfigurasi Service (Internal Cluster)
+# ==========================================================
+# Saat pakai Ingress, Service CUKUP pakai ClusterIP.
+# Karena Ingress yang akan "menembak" service ini dari dalam.
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+# ==========================================================
+# Konfigurasi NGINX INGRESS (Pintu Gerbang Utama)
+# ==========================================================
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    # Mengizinkan upload file besar jika diperlukan (misal: lampiran klaim)
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+    # Memastikan session tetap di pod yang sama (opsional)
+    # nginx.ingress.kubernetes.io/affinity: "cookie"
+  hosts:
+    - host: company.co.id  # Domain simulasi kamu
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+# ==========================================================
+# Environment & Resources
+# ==========================================================
+env: {}
+  # SPRING_PROFILES_ACTIVE: "dev"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 1024Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi

@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: local-registry
+  namespace: cicd-api-deploy
+  labels:
+    app: local-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: local-registry
+  template:
+    metadata:
+      labels:
+        app: local-registry
+    spec:
+      containers:
+        - name: registry
+          image: registry:2
+          ports:
+            - containerPort: 5000
+              name: registry-port
+          env:
+            - name: REGISTRY_STORAGE_DELETE_ENABLED
+              value: "true"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: cicd-api-deploy
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      targetPort: 5000
+      protocol: TCP
+      name: registry-port
+  selector:
+    app: local-registry

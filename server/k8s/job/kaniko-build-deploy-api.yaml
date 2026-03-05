@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build-deploy-api
+  namespace: cicd-api-deploy
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kaniko
+          image: gcr.io/kaniko-project/executor:latest
+          args:
+            - "--context=/workspace"
+            - "--dockerfile=/workspace/server/Dockerfile"
+            # Menggunakan internal DNS dari Service registry yang baru dibuat
+            - "--destination=registry.cicd-api-deploy.svc.cluster.local:5000/deploy-api:1.0.0"
+            # Wajib ditambah agar Kaniko mau push ke registry HTTP (tanpa SSL)
+            - "--insecure"
+            - "--insecure-pull"
+            - "--skip-tls-verify"
+            - "--cache=true"
+          volumeMounts:
+            - name: source
+              mountPath: /workspace
+      volumes:
+        - name: source
+          hostPath:
+            path: /run/desktop/mnt/host/wsl/Ubuntu/home/exel_tarkus/ExelFiles/k8s-helm-chart
+            # type: Directory
