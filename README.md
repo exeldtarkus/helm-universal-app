@@ -1,10 +1,6 @@
-Tentu, berikut adalah draf `README.md` yang terstruktur dan profesional untuk repositori Helm Chart aplikasi BIMA Anda.
+# Application Helm Chart
 
----
-
-# BIMA Application Helm Chart
-
-Repositori ini berisi konfigurasi Helm Chart untuk men-deploy aplikasi BIMA ke dalam cluster Kubernetes. Struktur ini dirancang untuk mempermudah manajemen konfigurasi, deployment, dan routing jaringan menggunakan Ingress.
+Repositori ini berisi konfigurasi Helm Chart untuk men-deploy aplikasi ke dalam cluster Kubernetes. Struktur ini dirancang untuk mempermudah manajemen konfigurasi, deployment, dan routing jaringan menggunakan Ingress.
 
 ## 📂 Struktur Direktori
 
@@ -72,16 +68,16 @@ kubectl create secret docker-registry nexus-docker-secret \
 
 
 
-### Langkah 2: Deploy Aplikasi BIMA dengan Helm
+### Langkah 2: Deploy Aplikasi dengan Helm
 
 Pastikan terminal Anda berada di direktori yang sejajar dengan folder `k8s-helm-chart-app`. Gunakan perintah `helm upgrade --install` agar Helm otomatis melakukan instalasi baru atau mengupdate jika aplikasi sudah pernah di-deploy sebelumnya.
 
 Jalankan perintah berikut:
 
 ```bash
-helm upgrade --install bima-app ./k8s-helm-chart-app \
-  --set fullnameOverride=bima-app \
-  --set image.repository=10.1.40.92:8802/bima-app \
+helm upgrade --install-app ./k8s-helm-chart-app \
+  --set fullnameOverride-app \
+  --set image.repository=10.1.40.92:8802-app \
   --set image.tag=latest \
   --set service.port=80 \
   --set service.targetPort=8080 \
@@ -91,8 +87,8 @@ helm upgrade --install bima-app ./k8s-helm-chart-app \
 
 **Penjelasan Parameter (Overrides):**
 
-* `fullnameOverride=bima-app`: Memaksa nama resource K8s menjadi `bima-app` tanpa embel-embel nama release.
-* `image.repository`: Lokasi image Docker aplikasi BIMA di registry Nexus.
+* `fullnameOverride-app`: Memaksa nama resource K8s menjadi -app` tanpa embel-embel nama release.
+* `image.repository`: Lokasi image Docker aplikasi di registry Nexus.
 * `image.tag`: Versi image yang akan ditarik (`latest`).
 * `service.port` & `targetPort`: Mapping port Service (`80`) ke port aplikasi di dalam container (`8080`).
 * `env.SPRING_PROFILES_ACTIVE=dev`: Mengatur environment variable Spring Boot agar berjalan di profil *development*.
