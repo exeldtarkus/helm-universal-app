@@ -1,101 +1,287 @@
 # Application Helm Chart
 
-Repositori ini berisi konfigurasi Helm Chart untuk men-deploy aplikasi ke dalam cluster Kubernetes. Struktur ini dirancang untuk mempermudah manajemen konfigurasi, deployment, dan routing jaringan menggunakan Ingress.
+Repositori ini berisi konfigurasi **Helm Chart** untuk men-deploy aplikasi ke dalam cluster **Kubernetes**. Struktur ini dirancang untuk mempermudah manajemen konfigurasi, deployment, dan routing jaringan menggunakan **Ingress**.
 
-## 📂 Struktur Direktori
+Helm Chart ini juga dapat **dipackage dan disimpan di Nexus Helm Repository** sehingga dapat digunakan sebagai **artifact deployment yang terpusat**.
+
+---
+
+# 📂 Struktur Direktori
 
 Berikut adalah struktur folder dari Helm Chart ini beserta fungsinya:
 
 ```text
 k8s-helm-chart-app/
 ├── Chart.yaml             # Metadata utama dari chart ini (nama, versi, deskripsi).
-├── values.yaml            # File pusat konfigurasi default (parameter yang sering diubah seperti image, port, environment variables).
+├── values.yaml            # File pusat konfigurasi default (parameter seperti image, port, environment variables).
 └── templates/             # Folder berisi file template YAML Kubernetes yang akan dirender oleh Helm.
-    ├── _helpers.tpl       # Kumpulan fungsi bantuan (template functions) untuk standardisasi penamaan dinamis di seluruh file YAML.
-    ├── deployment.yaml    # Template K8s Deployment: Mengatur spesifikasi Pod, Replicas, dan container image yang digunakan.
-    ├── service.yaml       # Template K8s Service: Mengatur eksposur jaringan internal cluster (Port & TargetPort).
-    └── ingress.yaml       # Template K8s Ingress: Mengatur routing trafik HTTP/HTTPS dari luar cluster masuk ke Service aplikasi. Berfungsi sebagai API Gateway atau reverse proxy.
-
+    ├── _helpers.tpl       # Template helper untuk standardisasi penamaan resource.
+    ├── deployment.yaml    # Template Deployment Kubernetes (Pod, Replica, Image).
+    ├── service.yaml       # Template Service Kubernetes (Port dan TargetPort).
+    └── ingress.yaml       # Template Ingress untuk routing HTTP/HTTPS dari luar cluster.
 ```
 
 ---
 
-## 🚀 Prasyarat (Prerequisites)
+# 🚀 Prasyarat (Prerequisites)
 
-Sebelum melakukan deployment, pastikan cluster Kubernetes Anda sudah memiliki **Ingress Controller**. Ingress tidak akan berjalan jika mesin NGINX-nya belum terinstal di dalam cluster.
+Pastikan cluster Kubernetes Anda sudah memiliki **Ingress Controller**.
 
-Jalankan perintah berikut (cukup sekali saja di cluster Anda) untuk menginstal NGINX Ingress Controller di lingkungan **Docker Desktop (Windows)**:
+Jika belum ada, install **NGINX Ingress Controller**:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
-
 ```
+
+Ingress berfungsi sebagai **reverse proxy / API gateway** yang mengarahkan trafik dari luar cluster menuju Service aplikasi.
 
 ---
 
-## 🛠️ Langkah-langkah Deployment
+# 🛠️ Langkah-langkah Deployment
 
-### Langkah 1: Buat Kunci Akses (Secret) untuk Nexus
+## 1️⃣ Membuat Secret untuk Akses Nexus Docker Registry
 
-Kubernetes membutuhkan izin otentikasi (Secret) untuk menarik (*pull*) Docker image dari private repository Nexus Anda.
+Agar Kubernetes dapat menarik Docker image dari **private Nexus repository**, diperlukan secret authentication.
 
-1. Hapus secret lama jika sudah ada untuk menghindari konflik:
+### Hapus secret lama (jika ada)
+
 ```bash
 kubectl delete secret nexus-docker-secret --ignore-not-found
-
 ```
 
+### Buat secret baru
 
-2. Buat secret baru dengan kredensial Nexus Anda:
 ```bash
 kubectl create secret docker-registry nexus-docker-secret \
   --docker-server=10.3.1.67:8802 \
   --docker-username=admin \
-  --docker-password=bcalife.1234
-
+  --docker-password=admin
 ```
 
+### Konfigurasi Nexus
 
-> **Catatan Konfigurasi Nexus:**
+| Parameter    | Nilai                    |
+| ------------ | ------------------------ |
+| Nexus Server | 10.3.1.67                |
+| Port Docker  | 8802                     |
+| Repository   | docker-image-development |
 
+Secret ini akan digunakan pada **Deployment** melalui `imagePullSecrets`.
 
-> * **IP Repository Nexus:** `10.3.1.67`
-> * **Port:** `8802` (Port yang dibuka khusus untuk menyimpan Docker image).
-> * **Nama Repository:** `docker-image-development`
-> *(Pastikan untuk menyesuaikan `docker-server` dengan IP dan Port yang aktif jika terdapat perubahan environment).*
-> 
-> 
+---
 
+# 2️⃣ Deploy Aplikasi Menggunakan Helm
 
-
-### Langkah 2: Deploy Aplikasi dengan Helm
-
-Pastikan terminal Anda berada di direktori yang sejajar dengan folder `k8s-helm-chart-app`. Gunakan perintah `helm upgrade --install` agar Helm otomatis melakukan instalasi baru atau mengupdate jika aplikasi sudah pernah di-deploy sebelumnya.
-
-Jalankan perintah berikut:
+Jalankan perintah berikut dari direktori yang sejajar dengan folder chart:
 
 ```bash
-helm upgrade --install-app ./k8s-helm-chart-app \
-  --set fullnameOverride-app \
-  --set image.repository=10.1.40.92:8802-app \
+helm upgrade --install app ./k8s-helm-chart-app \
+  --set fullnameOverride=app \
+  --set image.repository=10.1.40.92:8802/app \
   --set image.tag=latest \
   --set service.port=80 \
   --set service.targetPort=8080 \
   --set env.SPRING_PROFILES_ACTIVE=dev
-
 ```
 
-**Penjelasan Parameter (Overrides):**
+### Penjelasan Parameter
 
-* `fullnameOverride-app`: Memaksa nama resource K8s menjadi -app` tanpa embel-embel nama release.
-* `image.repository`: Lokasi image Docker aplikasi di registry Nexus.
-* `image.tag`: Versi image yang akan ditarik (`latest`).
-* `service.port` & `targetPort`: Mapping port Service (`80`) ke port aplikasi di dalam container (`8080`).
-* `env.SPRING_PROFILES_ACTIVE=dev`: Mengatur environment variable Spring Boot agar berjalan di profil *development*.
+| Parameter                  | Fungsi                            |
+| -------------------------- | --------------------------------- |
+| fullnameOverride           | Mengatur nama resource Kubernetes |
+| image.repository           | Lokasi Docker image di Nexus      |
+| image.tag                  | Versi image                       |
+| service.port               | Port yang diexpose oleh service   |
+| service.targetPort         | Port aplikasi di dalam container  |
+| env.SPRING_PROFILES_ACTIVE | Environment variable Spring Boot  |
 
-**Output yang diharapkan:**
-Anda akan melihat ringkasan dari Helm di terminal dengan keterangan `STATUS: deployed`, menandakan aplikasi telah berhasil dijalankan.
+Jika berhasil, output Helm akan menampilkan:
+
+```text
+STATUS: deployed
+```
 
 ---
 
-Apakah Anda ingin saya tambahkan contoh isi dari file `ingress.yaml` dan `values.yaml` untuk melengkapi setup ini?
+# 📦 Publish Helm Chart ke Nexus Repository
+
+Selain deploy langsung dari folder, Helm Chart juga dapat **dipackage dan disimpan di Nexus** agar menjadi **artifact deployment** seperti `.jar` atau `.war`.
+
+---
+
+# 3️⃣ Package Helm Chart
+
+Masuk ke folder chart lalu jalankan:
+
+```bash
+helm package .
+```
+
+Output:
+
+```text
+Successfully packaged chart and saved it to:
+universal-app-1.0.0.tgz
+```
+
+File `.tgz` inilah yang akan diupload ke Nexus.
+
+---
+
+# 4️⃣ Menambahkan Helm Repository Nexus
+
+Tambahkan Nexus sebagai Helm repository:
+
+```bash
+helm repo add nexus-repo http://10.1.40.92:8082/repository/helm-internal/ \
+  --username admin \
+  --password admin
+```
+
+### Penjelasan
+
+| Parameter         | Fungsi                           |
+| ----------------- | -------------------------------- |
+| helm repo add     | Menambahkan repository Helm baru |
+| nexus-repo        | Nama alias repository            |
+| URL               | URL Nexus Helm repository        |
+| username/password | Credential akses repository      |
+
+---
+
+# 5️⃣ Upload Helm Chart ke Nexus
+
+Helm tidak memiliki command built-in untuk upload chart ke Nexus, sehingga biasanya menggunakan **curl**.
+
+```bash
+curl -u admin:admin -X PUT \
+  "http://10.1.40.92:8082/repository/helm-internal/" \
+  --upload-file universal-app-1.0.0.tgz
+```
+
+### Penjelasan
+
+| Parameter         | Fungsi                        |
+| ----------------- | ----------------------------- |
+| -u admin:password | Authentication Nexus          |
+| -X PUT            | HTTP method upload file       |
+| --upload-file     | File Helm Chart yang diupload |
+
+---
+
+### Alternatif Upload Helm Chart
+
+Beberapa alternatif selain `curl`:
+
+1️⃣ **Helm Push Plugin**
+
+Install plugin:
+
+```bash
+helm plugin install https://github.com/chartmuseum/helm-push.git
+```
+
+Upload chart:
+
+```bash
+helm push universal-app-1.0.0.tgz nexus-repo
+```
+
+2️⃣ **Upload melalui UI Nexus**
+
+Masuk ke:
+
+```
+Nexus → Repositories → helm-internal → Upload
+```
+
+Upload file `.tgz`.
+
+---
+
+# 6️⃣ Update Helm Repository
+
+Setelah chart diupload ke Nexus, jalankan:
+
+```bash
+helm repo update
+```
+
+### Penjelasan
+
+Perintah ini akan:
+
+* Mengambil **index terbaru dari semua Helm repository**
+* Memperbarui daftar chart yang tersedia
+* Agar Helm mengetahui **chart baru yang baru saja diupload**
+
+Tanpa `helm repo update`, Helm **tidak akan melihat chart terbaru** di repository.
+
+---
+
+# 7️⃣ Mencari Chart di Repository
+
+Untuk melihat chart yang tersedia:
+
+```bash
+helm search repo nexus-repo/universal-app
+```
+
+### Penjelasan
+
+| Parameter        | Fungsi                           |
+| ---------------- | -------------------------------- |
+| helm search repo | Mencari chart di repository Helm |
+| nexus-repo       | Nama repo                        |
+| universal-app    | Nama chart                       |
+
+Contoh output:
+
+```text
+NAME                     CHART VERSION   APP VERSION   DESCRIPTION
+nexus-repo/universal-app 1.0.0           1.0.0         Helm chart for universal app
+```
+
+---
+
+# 8️⃣ Deploy Chart dari Nexus Repository
+
+Setelah chart tersedia di Nexus, deploy bisa langsung dari repository:
+
+```bash
+helm install app nexus-repo/universal-app
+```
+
+atau upgrade:
+
+```bash
+helm upgrade app nexus-repo/universal-app
+```
+
+---
+
+# 🔁 Workflow CI/CD yang Direkomendasikan
+
+Workflow yang umum digunakan:
+
+```text
+Developer
+   │
+   │ build docker image
+   ▼
+Nexus Docker Registry
+   │
+   │ helm package
+   ▼
+Nexus Helm Repository
+   │
+   │ helm install / upgrade
+   ▼
+Kubernetes Cluster
+```
+
+Sehingga:
+
+* **Docker Image** disimpan di Nexus
+* **Helm Chart** disimpan di Nexus
+* Kubernetes hanya melakukan **pull artifact**
