@@ -1,6 +1,6 @@
 apiVersion: v2
-name: universal-app
-description: Helm chart universal untuk deploy berbagai aplikasi (Java, Node, Go, Python, and other)
+name: universal-platform
+description: Universal Kubernetes platform chart for multiple microservices
 type: application
-version: 1.0.3
+version: 2.0.1
 appVersion: "1.0.0"
