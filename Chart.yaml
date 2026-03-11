@@ -2,5 +2,5 @@ apiVersion: v2
 name: universal-platform
 description: Universal Kubernetes platform chart for multiple microservices
 type: application
-version: 2.0.4
+version: 2.0.5
 appVersion: "1.0.0"
