@@ -5,7 +5,8 @@ metadata:
   labels:
     {{- include "universal-app.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  # REPLICA: Dinamis dari values, default ke 1 jika tidak diisi
+  replicas: {{ .Values.replicaCount | default 1 }}
   selector:
     matchLabels:
       {{- include "universal-app.selectorLabels" . | nindent 6 }}
@@ -27,7 +28,7 @@ spec:
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
           
-          # Looping untuk memasukkan Environment Variables
+          # Environment Variables
           {{- if .Values.env }}
           env:
             {{- range $key, $val := .Values.env }}
@@ -36,5 +37,16 @@ spec:
             {{- end }}
           {{- end }}
           
+          # RESOURCES: Dinamis dengan Default Fallback
           resources:
+            {{- if .Values.resources }}
             {{- toYaml .Values.resources | nindent 12 }}
+            {{- else }}
+            # Nilai ini hanya dipakai jika .Values.resources di values.yaml dikosongkan
+            limits:
+              cpu: 500m
+              memory: 1024Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            {{- end }}

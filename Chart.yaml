@@ -2,5 +2,5 @@ apiVersion: v2
 name: universal-app
 description: Helm chart universal untuk deploy berbagai aplikasi (Java, Node, Go, Python, and other)
 type: application
-version: 1.0.0
+version: 1.0.3
 appVersion: "1.0.0"

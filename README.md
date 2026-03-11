@@ -154,10 +154,10 @@ helm repo add nexus-repo http://10.1.40.92:8082/repository/helm-internal/ \
 Helm tidak memiliki command built-in untuk upload chart ke Nexus, sehingga biasanya menggunakan **curl**.
 
 ```bash
-curl -u admin:admin -X PUT \
-  "http://10.1.40.92:8082/repository/helm-internal/" \
-  --upload-file universal-app-1.0.0.tgz
+curl -u admin:admin123 --upload-file universal-app-1.0.3.tgz http://10.1.40.213:31807/repository/helm-internal/universal-app-1.0.3.tgz
 ```
+# Ganti bima-test-release dengan RELEASE_NAME kamu jika berbeda
+helm upgrade bima-test-release bcalife-helm/universal-app --set service.type=NodePort --set service.nodePort=30001
 
 ### Penjelasan
 

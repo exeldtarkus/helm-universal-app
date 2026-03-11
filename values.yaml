@@ -1,20 +1,17 @@
 # ==========================================================
 # Konfigurasi Scalability & High Availability
 # ==========================================================
-# Kita jalankan 3 pod agar jika 1 node slave mati, 
-# pod di node lain tetap melayani user.
-replicaCount: 3
+# Default: 1 pod
+replicaCount: 1
 
 # ==========================================================
 # Konfigurasi Docker Image
 # ==========================================================
 image:
-  # Gunakan IP Nexus (10.3.1.67:8802 untuk server atau localhost:8802 untuk lokal)
   repository: company-repo/company-apps
   pullPolicy: Always
   tag: "latest"
 
-# Secret untuk autentikasi ke Nexus
 imagePullSecrets:
   - name: nexus-docker-secret
 
@@ -25,19 +22,17 @@ nameOverride: ""
 fullnameOverride: ""
 
 serviceAccount:
-  # Kita set false dulu karena biasanya apps Java belum butuh izin khusus ke API K8s
   create: false
   name: ""
 
 # ==========================================================
-# Konfigurasi Service (Internal Cluster)
+# Konfigurasi Service (Akses dari Jaringan Luar)
 # ==========================================================
-# Saat pakai Ingress, Service CUKUP pakai ClusterIP.
-# Karena Ingress yang akan "menembak" service ini dari dalam.
 service:
   type: ClusterIP
-  port: 80
-  targetPort: 8080
+  port: 80              # Port internal service
+  targetPort: 8080      # Port di dalam container
+  nodePort: ""          # Dikosongkan karena sudah pakai Ingress port 30001 di level infrastruktur
 
 # ==========================================================
 # Konfigurasi NGINX INGRESS (Pintu Gerbang Utama)
@@ -46,12 +41,18 @@ ingress:
   enabled: true
   className: "nginx"
   annotations:
-    # Mengizinkan upload file besar jika diperlukan (misal: lampiran klaim)
+    # configuration limit upload memory
     nginx.ingress.kubernetes.io/proxy-body-size: "500m"
-    # Memastikan session tetap di pod yang sama (opsional)
-    # nginx.ingress.kubernetes.io/affinity: "cookie"
+    
+    # ------------------------------------------------------
+    # Konfigurasi Sticky Session (Wajib untuk Java/Jetty dengan 2+ Pods)
+    # ------------------------------------------------------
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route-default"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+    
   hosts:
-    - host: company.co.id  # Domain simulasi kamu
+    - host: ""
       paths:
         - path: /
           pathType: ImplementationSpecific
