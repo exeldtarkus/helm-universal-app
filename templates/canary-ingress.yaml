@@ -1,0 +1,36 @@
+{{- if .Values.canary.enabled }}
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: {{ include "universal-app.fullname" . }}-canary
+
+  annotations:
+
+    nginx.ingress.kubernetes.io/canary: "true"
+
+    nginx.ingress.kubernetes.io/canary-weight: "{{ .Values.canary.weight }}"
+
+spec:
+
+  ingressClassName: {{ .Values.ingress.className }}
+
+  rules:
+
+  - host: {{ .Values.routing.domain }}
+
+    http:
+      paths:
+
+      - path: /{{ .Release.Name }}
+
+        pathType: Prefix
+
+        backend:
+          service:
+            name: {{ include "universal-app.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+
+{{- end }}

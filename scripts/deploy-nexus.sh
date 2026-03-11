@@ -22,19 +22,38 @@ echo "===================================================="
 # STEP 1 - Load Nexus Config
 # ------------------------------------------------------------------
 
-echo "[1/6] Loading Nexus configuration..."
+echo "[1/7] Loading Nexus configuration..."
 
-read -p "Enter path to Maven settings.xml [Default: ~/.m2/settings.xml]: " USER_M2
-M2_PATH=${USER_M2:-$M2_DEFAULT}
+DEPLOY_M2_FILE="$DEPLOY_DIR/settings.xml"
 
-if [ ! -f "$M2_PATH" ]; then
-    echo "[ERROR] settings.xml not found!"
-    exit 1
+# Jika settings.xml sudah ada di deploy folder
+if [ -f "$DEPLOY_M2_FILE" ]; then
+
+    echo "[OK] Using cached settings.xml from deploy folder"
+    M2_PATH="$DEPLOY_M2_FILE"
+
+else
+
+    echo "[INFO] settings.xml not found in deploy folder"
+
+    read -p "Enter path to Maven settings.xml [Default: ~/.m2/settings.xml]: " USER_M2
+
+    M2_PATH=${USER_M2:-$M2_DEFAULT}
+
+    if [ ! -f "$M2_PATH" ]; then
+        echo "[ERROR] settings.xml not found!"
+        exit 1
+    fi
+
+    echo "[INFO] Copying settings.xml to deploy directory..."
+
+    cp "$M2_PATH" "$DEPLOY_M2_FILE"
+
+    M2_PATH="$DEPLOY_M2_FILE"
+
 fi
 
-echo "[OK] settings.xml found"
-
-cp "$M2_PATH" "$DEPLOY_DIR/settings.xml"
+echo "[OK] settings.xml ready"
 
 # Extract Nexus URL
 NEXUS_URL=$(grep -A 5 "<id>nexus</id>" "$M2_PATH" | grep "<url>" | sed 's/.*<url>\(.*\)<\/url>.*/\1/' | xargs)
@@ -187,6 +206,31 @@ curl -u "$NEXUS_USER:$NEXUS_PASS" \
      "$UPLOAD_URL"
 
 echo "[OK] Upload successful"
+
+# ------------------------------------------------------------------
+# STEP 7 - Git Commit & Push
+# ------------------------------------------------------------------
+
+echo ""
+echo "[7/7] Updating Git repository..."
+
+cd "$ROOT_DIR"
+
+# Check if git repo exists
+if [ ! -d ".git" ]; then
+    echo "[WARN] Not a git repository. Skipping git commit."
+else
+
+    git add Chart.yaml
+
+    git commit -m "deploy - new version ${NEW_VERSION}" || echo "[INFO] Nothing to commit"
+
+    echo "[INFO] Pushing changes to remote..."
+
+    git push
+
+    echo "[OK] Git repository updated"
+fi
 
 # ------------------------------------------------------------------
 # FINISH

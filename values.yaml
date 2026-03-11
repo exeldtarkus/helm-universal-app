@@ -1,12 +1,5 @@
-# ==========================================================
-# Konfigurasi Scalability & High Availability
-# ==========================================================
-# Default: 1 pod
 replicaCount: 1
 
-# ==========================================================
-# Konfigurasi Docker Image
-# ==========================================================
 image:
   repository: company-repo/company-apps
   pullPolicy: Always
@@ -15,9 +8,6 @@ image:
 imagePullSecrets:
   - name: nexus-docker-secret
 
-# ==========================================================
-# Penamaan & Identitas (Wajib ada untuk _helpers.tpl)
-# ==========================================================
 nameOverride: ""
 fullnameOverride: ""
 
@@ -25,43 +15,48 @@ serviceAccount:
   create: false
   name: ""
 
-# ==========================================================
-# Konfigurasi Service (Akses dari Jaringan Luar)
-# ==========================================================
 service:
   type: ClusterIP
-  port: 80              # Port internal service
-  targetPort: 8080      # Port di dalam container
-  nodePort: ""          # Dikosongkan karena sudah pakai Ingress port 30001 di level infrastruktur
+  port: 80
+  targetPort: 8080
 
-# ==========================================================
-# Konfigurasi NGINX INGRESS (Pintu Gerbang Utama)
-# ==========================================================
+routing:
+  mode: path
+  domain: domain.com
+
+tls:
+  enabled: true
+  secretName: platform-tls
+
 ingress:
   enabled: true
-  className: "nginx"
+  className: nginx
   annotations:
-    # configuration limit upload memory
+
     nginx.ingress.kubernetes.io/proxy-body-size: "500m"
-    
-    # ------------------------------------------------------
-    # Konfigurasi Sticky Session (Wajib untuk Java/Jetty dengan 2+ Pods)
-    # ------------------------------------------------------
+
     nginx.ingress.kubernetes.io/affinity: "cookie"
     nginx.ingress.kubernetes.io/session-cookie-name: "route-default"
     nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
-    
-  hosts:
-    - host: ""
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
 
-# ==========================================================
-# Environment & Resources
-# ==========================================================
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPU: 70
+
+healthcheck:
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+canary:
+  enabled: false
+  weight: 20
+
 env: {}
-  # SPRING_PROFILES_ACTIVE: "dev"
 
 resources:
   limits:

@@ -4,49 +4,56 @@ metadata:
   name: {{ include "universal-app.fullname" . }}
   labels:
     {{- include "universal-app.labels" . | nindent 4 }}
+
 spec:
-  # REPLICA: Dinamis dari values, default ke 1 jika tidak diisi
-  replicas: {{ .Values.replicaCount | default 1 }}
+  replicas: {{ .Values.replicaCount }}
+
   selector:
     matchLabels:
       {{- include "universal-app.selectorLabels" . | nindent 6 }}
+
   template:
     metadata:
       labels:
         {{- include "universal-app.selectorLabels" . | nindent 8 }}
+
     spec:
+
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
-              protocol: TCP
-          
-          # Environment Variables
-          {{- if .Values.env }}
+
           env:
-            {{- range $key, $val := .Values.env }}
+          {{- range $key,$val := .Values.env }}
             - name: {{ $key }}
-              value: {{ $val | quote }}
-            {{- end }}
+              value: "{{ $val }}"
           {{- end }}
-          
-          # RESOURCES: Dinamis dengan Default Fallback
+
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.path }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: {{ .Values.healthcheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.periodSeconds }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.path }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: {{ .Values.healthcheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.periodSeconds }}
+
           resources:
-            {{- if .Values.resources }}
             {{- toYaml .Values.resources | nindent 12 }}
-            {{- else }}
-            # Nilai ini hanya dipakai jika .Values.resources di values.yaml dikosongkan
-            limits:
-              cpu: 500m
-              memory: 1024Mi
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            {{- end }}
