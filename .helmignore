@@ -1,0 +1,13 @@
+.git/
+.gitignore
+build/
+target/
+node_modules/
+deploy/
+scripts/
+Dockerfile
+*.log
+*.tgz
+*.jar
+*.war
+*.zip
