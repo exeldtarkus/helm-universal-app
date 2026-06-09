@@ -5,6 +5,7 @@ target/
 node_modules/
 deploy/
 scripts/
+nodejs/
 Dockerfile
 *.log
 *.tgz

@@ -43,11 +43,12 @@ ingress:
 
 autoscaling:
   enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPU: 70
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPU: 95
 
 healthcheck:
+  enabled: true
   path: /health
   initialDelaySeconds: 10
   periodSeconds: 10
@@ -59,9 +60,9 @@ canary:
 env: {}
 
 resources:
-  limits:
-    cpu: 500m
-    memory: 1024Mi
   requests:
-    cpu: 100m
-    memory: 256Mi
+    cpu: 500m      # Jaminan alokasi setengah Core saat aplikasi idle
+    memory: 1024Mi # Jaminan memori dasar agar JVM tidak kesulitan saat startup
+  limits:
+    cpu: 1000m     # Mengizinkan pemakaian 1 Core penuh untuk mempercepat booting
+    memory: 2048Mi # Batas aman 2 GB untuk menampung spike memori Spring dan HikariCP

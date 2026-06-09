@@ -1,3 +1,4 @@
 .vscode/
 /build
 /scripts/deploy
+/nodejs

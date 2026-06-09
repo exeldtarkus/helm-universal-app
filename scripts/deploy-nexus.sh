@@ -199,7 +199,7 @@ echo "     $PACKAGE_NAME"
 echo ""
 echo "[6/6] Uploading chart to Nexus..."
 
-UPLOAD_URL="http://$NEXUS_HOST:$NEXUS_PORT/repository/helm-internal/"
+UPLOAD_URL="http://$NEXUS_HOST:$NEXUS_PORT/repository/helm-repositories/"
 
 curl -u "$NEXUS_USER:$NEXUS_PASS" \
      --upload-file "$BUILD_DIR/$PACKAGE_NAME" \
