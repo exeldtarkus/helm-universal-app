@@ -58,3 +58,43 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+
+          {{- if .Values.storage.enabled }}
+          volumeMounts:
+            {{- range .Values.storage.mounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+              {{- if .readOnly }}
+              readOnly: true
+              {{- end }}
+            {{- end }}
+          {{- end }}
+
+      {{- if .Values.storage.enabled }}
+      volumes:
+        {{- range .Values.storage.mounts }}
+        - name: {{ .name }}
+          {{- if eq .type "pvc" }}
+          persistentVolumeClaim:
+            claimName: {{ .claimName | default (printf "%s-%s" (include "universal-app.fullname" $) .name) }}
+          {{- else if eq .type "nfs" }}
+          nfs:
+            server: {{ .server }}
+            path: {{ .path }}
+            {{- if .readOnly }}
+            readOnly: true
+            {{- end }}
+          {{- else if eq .type "hostPath" }}
+          hostPath:
+            path: {{ .path }}
+            type: {{ .hostPathType | default "DirectoryOrCreate" }}
+          {{- else if eq .type "emptyDir" }}
+          emptyDir: {}
+          {{- else }}
+          {{- fail (printf "storage.mounts[%s]: type '%s' tidak dikenal (pilih: pvc, nfs, hostPath, emptyDir)" .name .type) }}
+          {{- end }}
+        {{- end }}
+      {{- end }}

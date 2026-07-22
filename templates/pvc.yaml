@@ -1,0 +1,25 @@
+{{- if .Values.storage.enabled }}
+{{- range .Values.storage.mounts }}
+{{- if and (eq .type "pvc") (not .claimName) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "universal-app.fullname" $ }}-{{ .name }}
+  labels:
+    {{- include "universal-app.labels" $ | nindent 4 }}
+  annotations:
+    # PVC dibiarkan hidup saat release di-uninstall supaya data tidak ikut terhapus.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    {{- toYaml (.accessModes | default (list "ReadWriteOnce")) | nindent 4 }}
+  {{- if .storageClass }}
+  storageClassName: {{ .storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ required (printf "storage.mounts[%s]: 'size' wajib diisi untuk type pvc" .name) .size }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -59,6 +59,45 @@ canary:
 
 env: {}
 
+# Storage / share folder.
+# Dimatikan secara default supaya service yang tidak butuh disk tetap ephemeral.
+# Setiap entry di `mounts` menghasilkan satu volume + volumeMount di container.
+#
+# type yang didukung:
+#   pvc       -> pakai PersistentVolumeClaim. Chart yang membuat PVC-nya,
+#                kecuali `claimName` diisi (berarti pakai PVC yang sudah ada).
+#   nfs       -> mount langsung ke NFS server (butuh `server` + `path`)
+#   hostPath  -> mount folder dari node (hanya untuk single-node / k3s lokal)
+#   emptyDir  -> scratch space, hilang saat pod mati
+#
+# Catatan share folder Windows (UNC \\server\share):
+#   Kubernetes tidak bisa mount UNC langsung. Pilih salah satu:
+#   1. Pasang csi-driver-smb di cluster, buat StorageClass SMB + secret kredensial,
+#      lalu pakai type: pvc dengan storageClass tersebut.
+#   2. Expose share tersebut sebagai NFS, lalu pakai type: nfs.
+#   Setelah ter-mount, arahkan env aplikasi ke mountPath-nya
+#   (mis. ASSETS_FONTS_PATH, LINUX_SHARE_FOLDER_BASE).
+storage:
+  enabled: false
+  mounts: []
+    # - name: reports
+    #   type: pvc
+    #   mountPath: /app/reports
+    #   size: 10Gi
+    #   accessModes:
+    #     - ReadWriteMany   # WAJIB RWX kalau replica > 1 atau HPA aktif
+    #   storageClass: ""    # kosong = pakai default StorageClass cluster
+    #   claimName: ""       # diisi = pakai PVC existing, chart tidak bikin baru
+    #   subPath: ""
+    #   readOnly: false
+    #
+    # - name: assets
+    #   type: nfs
+    #   mountPath: /mnt/assets
+    #   server: 10.0.0.10
+    #   path: /Company-share/Operations-IT/Assets
+    #   readOnly: true
+
 resources:
   requests:
     cpu: 500m      # Jaminan alokasi setengah Core saat aplikasi idle
