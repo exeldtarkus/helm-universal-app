@@ -3,3 +3,4 @@
 /scripts/deploy
 /nodejs
 *.md
+/examples

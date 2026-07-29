@@ -23,6 +23,11 @@ service:
 routing:
   mode: path
   domain: domain.com
+  # Opsional. Kalau diisi, dipakai literal sebagai host (mode subdomain) —
+  # menimpa default "<releaseName>.<domain>". Berguna kalau segmen host yang
+  # diinginkan tidak boleh/tidak sama dengan nama release (mis. release name
+  # harus DNS-1123 valid/tanpa underscore, tapi host publik boleh underscore).
+  host: ""
 
 tls:
   enabled: true

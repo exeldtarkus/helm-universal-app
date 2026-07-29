@@ -14,7 +14,7 @@ spec:
   tls:
     - hosts:
       - {{ if eq .Values.routing.mode "subdomain" }}
-        {{ .Release.Name }}.{{ .Values.routing.domain }}
+        {{ .Values.routing.host | default (printf "%s.%s" .Release.Name .Values.routing.domain) }}
         {{- else }}
         {{ .Values.routing.domain }}
         {{- end }}
@@ -33,7 +33,7 @@ spec:
                 port:
                   number: {{ .Values.service.port }}
   {{- else }}
-    - host: {{ .Release.Name }}.{{ .Values.routing.domain }}
+    - host: {{ .Values.routing.host | default (printf "%s.%s" .Release.Name .Values.routing.domain) }}
       http:
         paths:
           - path: /
