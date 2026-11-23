@@ -1,4 +1,7 @@
 {{- if .Values.ingress.enabled }}
+{{- if eq .Values.routing.mode "path" }}
+{{- fail "routing.mode \"path\" dihapus sejak chart v5.0.0: path regex /<release>(/|$)(.*) + rewrite-target itu khas ingress-nginx dan tidak jalan di Traefik. Pakai routing.mode \"subdomain\"." }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,32 +10,32 @@ metadata:
     {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- /*
+      Anotasi khusus ingress-nginx. Diabaikan Traefik tanpa error, dan dibuang di
+      Langkah 8 (bareng pencabutan --default-backend-service + svc custom-404),
+      BUKAN di v5.0.0: selama ingress-nginx masih melayani produksi, mencabutnya
+      lebih dulu membuat 17 Ingress kehilangan halaman 503 "sedang deploy".
+    */}}
+    {{- with .Values.ingress.customHttpErrors }}
+    {{- $codes := toString . }}
+    {{- if not (regexMatch "^[1-5][0-9]{2}(,[1-5][0-9]{2})*$" $codes) }}
+    {{- fail (printf "ingress.customHttpErrors %q tidak valid: isi kode HTTP dipisah koma, mis. \"503\" atau \"404,503\"" $codes) }}
+    {{- end }}
+    {{- if not (hasKey ($.Values.ingress.annotations | default dict) "nginx.ingress.kubernetes.io/custom-http-errors") }}
+    nginx.ingress.kubernetes.io/custom-http-errors: {{ $codes | quote }}
+    {{- end }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
-  
+
   {{- if .Values.tls.enabled }}
   tls:
     - hosts:
-      - {{ if eq .Values.routing.mode "subdomain" }}
-        {{ .Release.Name }}.{{ .Values.routing.domain }}
-        {{- else }}
-        {{ .Values.routing.domain }}
-        {{- end }}
+        - {{ .Release.Name }}.{{ .Values.routing.domain }}
       secretName: {{ .Values.tls.secretName }}
   {{- end }}
 
   rules:
-  {{- if eq .Values.routing.mode "path" }}
-    - http:
-        paths:
-          - path: /{{ .Release.Name }}(/|$)(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: {{ include "universal-app.fullname" . }}
-                port:
-                  number: {{ .Values.service.port }}
-  {{- else }}
     - host: {{ .Release.Name }}.{{ .Values.routing.domain }}
       http:
         paths:
@@ -43,5 +46,4 @@ spec:
                 name: {{ include "universal-app.fullname" . }}
                 port:
                   number: {{ .Values.service.port }}
-  {{- end }}
 {{- end }}

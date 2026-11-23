@@ -4,6 +4,39 @@ metadata:
   name: {{ include "universal-app.fullname" . }}
   labels:
     {{- include "universal-app.labels" . | nindent 4 }}
+  {{- /*
+    Sticky session Traefik WAJIB ditulis di Service, bukan di Ingress: provider
+    Kubernetes Ingress milik Traefik hanya membaca anotasi sticky dari Service backend.
+    Nilainya diturunkan dari anotasi sticky nginx di `ingress.annotations` supaya
+    cuma ada satu sumber nilai — cutover nginx -> Traefik tidak perlu menyentuh
+    values tiap release, cukup flip `ingress.className`.
+    Anotasi nginx dan Traefik dirender berbarengan; controller yang tidak memakainya
+    mengabaikan milik tetangganya tanpa efek samping.
+    Tidak ada padanan Traefik untuk `session-cookie-hash` dan `session-cookie-expires`,
+    jadi keduanya tidak diterjemahkan.
+  */}}
+  {{- $ann := .Values.ingress.annotations | default dict }}
+  {{- $sticky := dict }}
+  {{- $mode := .Values.service.sticky }}
+  {{- $on := false }}
+  {{- if kindIs "bool" $mode }}
+  {{- $on = $mode }}
+  {{- else }}
+  {{- $on = eq (index $ann "nginx.ingress.kubernetes.io/affinity" | default "" | toString) "cookie" }}
+  {{- end }}
+  {{- if $on }}
+  {{- $_ := set $sticky "traefik.ingress.kubernetes.io/service.sticky.cookie" "true" }}
+  {{- range $nginxKey, $traefikKey := dict "session-cookie-name" "name" "session-cookie-path" "path" "session-cookie-max-age" "maxage" }}
+  {{- with index $ann (printf "nginx.ingress.kubernetes.io/%s" $nginxKey) }}
+  {{- $_ := set $sticky (printf "traefik.ingress.kubernetes.io/service.sticky.cookie.%s" $traefikKey) (toString .) }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- $merged := merge (deepCopy (.Values.service.annotations | default dict)) $sticky }}
+  {{- with $merged }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:

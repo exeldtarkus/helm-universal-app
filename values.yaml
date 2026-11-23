@@ -19,9 +19,26 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 8080
+  # Anotasi tambahan untuk Service. Digabung paling akhir, jadi menimpa
+  # anotasi sticky Traefik yang digenerate otomatis di bawah.
+  annotations: {}
+  # Sticky session Traefik, dirender jadi anotasi
+  # traefik.ingress.kubernetes.io/service.sticky.cookie* di Service
+  # (satu-satunya tempat Traefik membaca sticky lewat provider Ingress).
+  #   auto  -> ikut anotasi sticky nginx di `ingress.annotations`
+  #            (affinity: cookie + session-cookie-name/path/max-age).
+  #            Nilainya satu sumber, jadi cutover ke Traefik cuma perlu
+  #            flip `ingress.className`, tanpa menyentuh values per release.
+  #   true  -> paksa aktif walau anotasi nginx-nya tidak ada
+  #   false -> paksa mati
+  sticky: auto
 
 routing:
-  mode: path
+  # Hanya `subdomain` yang didukung sejak v5.0.0; host = <releaseName>.<domain>.
+  # Mode `path` dihapus karena bergantung pada path regex + rewrite-target
+  # khas ingress-nginx yang tidak jalan di Traefik. Mengisi `path` membuat
+  # render gagal dengan pesan jelas, bukan manifest yang salah diam-diam.
+  mode: subdomain
   domain: domain.com
 
 tls:
@@ -39,7 +56,20 @@ ingress:
     nginx.ingress.kubernetes.io/session-cookie-name: "route-default"
     nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
 
+    # Sisa dari routing.mode "path" yang sudah dihapus. Pada path "/" nilainya
+    # no-op (rewrite / -> /), dan Traefik mengabaikannya. Dibiarkan supaya
+    # Langkah 4 (redeploy ke v5.0.0 saat masih dilayani ingress-nginx) nol-diff;
+    # dibuang di Langkah 8 bareng anotasi nginx lainnya.
     nginx.ingress.kubernetes.io/rewrite-target: /
+
+  # Kode status yang dibalas dengan halaman custom dari default backend
+  # ingress-nginx (svc ingress-nginx/custom-404), mis. 503 = halaman
+  # "Sedang deploy" saat aplikasi belum punya pod Ready.
+  # Dirender jadi anotasi nginx.ingress.kubernetes.io/custom-http-errors.
+  # Format: "503" atau "404,503" (lewat --set, escape komanya: "404\,503").
+  # Isi "" untuk mematikan, mis. API yang sengaja membalas 503 berisi JSON.
+  # Kalau anotasi custom-http-errors sudah ada di `annotations`, yang itu dipakai.
+  customHttpErrors: "503"
 
 autoscaling:
   enabled: true
@@ -52,10 +82,6 @@ healthcheck:
   path: /health
   initialDelaySeconds: 10
   periodSeconds: 10
-
-canary:
-  enabled: false
-  weight: 20
 
 env: {}
 
